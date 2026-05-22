@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>吉伊卡娃俄羅斯方塊 Chiikawa Tetris</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        body {
+            /* 使用經典的吉伊卡娃粉嫩系色調，並加上柔和的漸層作為背景 */
+            background: linear-gradient(135deg, #ffeef2 0%, #e8f5ff 50%, #fff7e6 100%);
+            color: #5c4b43;
+            font-family: 'Comic Sans MS', 'Chalkboard SE', 'Microsoft JhengHei', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* 裝飾用的吉伊卡娃意象小星星背景點綴 */
+        body::before {
+            content: " can you celebrate? ♪ ♫";
+            position: absolute;
+            font-size: 12px;
+            color: rgba(0,0,0,0.03);
+            top: 20px;
+            left: 20px;
+        }
+
+        h1 {
+            font-size: 26px;
+            margin-bottom: 12px;
+            color: #ff94b3;
+            text-shadow: 2px 2px 0px #fff, 4px 4px 0px rgba(255, 148, 179, 0.2);
+            letter-spacing: 2px;
+        }
+
+        .game-container {
+            display: flex;
+            flex-direction: row;
+            align-items: flex-start;
+            background: rgba(255, 255, 255, 0.85);
+            padding: 18px;
+            border-radius: 20px;
+            border: 4px solid #ffd2df;
+            box-shadow: 0 8px 24px rgba(255, 182, 193, 0.4);
+            backdrop-filter: blur(4px);
+        }
+
+        #gameCanvas {
+            border: 4px solid #ffccd8;
+            border-radius: 10px;
+            background: #fffdf9; /* 溫柔的米白底色，方便看清粉嫩的方塊 */
+            display: block;
+            max-width: 100%;
+            height: auto;
+        }
+
+        .side-panel {
+            margin-left: 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            height: 400px;
+            width: 130px;
+        }
+
+        .info-box {
+            background: #fff0f3;
+            padding: 10px;
+            border-radius: 12px;
+            text-align: center;
+            margin-bottom: 10px;
+            border: 2px solid #ffe3e8;
+        }
+
+        .info-box h2 {
+            font-size: 13px;
+            color: #8a7367;
+            margin-bottom: 5px;
+        }
+
+        .info-box p {
+            font-size: 22px;
+            font-weight: bold;
+            color: #ff7597;
+        }
+
+        #highScore {
+            color: #ff527b;
+        }
+
+        #level {
+            color: #3ca9ff;
+        }
+
+        #btnStart {
+            padding: 12px;
+            background: #ffb6c1; /* 吉伊卡娃粉 */
+            border: none;
+            color: white;
+            font-weight: bold;
+            font-size: 16px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: transform 0.1s, background-color 0.2s;
+            box-shadow: 0 4px 0px #e0929e;
+            text-shadow: 1px 1px 0px rgba(0,0,0,0.1);
+        }
+
+        #btnStart:hover {
+            background: #ff9cb0;
+        }
+
+        #btnStart:active {
+            transform: translateY(3px);
+            box-shadow: 0 1px 0px #e0929e;
+        }
+
+        /* 手機虛擬按鍵調色（小八貓與烏薩奇配色） */
+        .controls {
+            display: none;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            width: 100%;
+            max-width: 320px;
+            margin-top: 15px;
+            padding: 0 10px;
+        }
+
+        .ctrl-btn {
+            background: #e3f2fd; /* 小八貓淺藍 */
+            border: 2px solid #bbdefb;
+            color: #42a5f5;
+            padding: 14px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 4px #90caf9;
+            transition: transform 0.05s;
+        }
+
+        /* 旋轉與瞬降按鍵換色區別（烏薩奇黃與小桃鼠粉） */
+        #ctrl-rotate, #ctrl-up {
+            background: #fffde7; /* 烏薩奇黃 */
+            border-color: #fff9c4;
+            color: #fbc02d;
+            box-shadow: 0 4px #fff59d;
+        }
+
+        #ctrl-drop {
+            background: #fce4ec; /* 小桃鼠粉 */
+            border-color: #f8bbd0;
+            color: #ec407a;
+            box-shadow: 0 4px #f48fb1;
+        }
+
+        .ctrl-btn:active {
+            box-shadow: 0 1px transparent;
+            transform: translateY(3px);
+        }
+
+        .footer {
+            margin-top: 20px;
+            font-size: 13px;
+            color: #a39289;
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+
+        /* 手機版 RWD 調整 */
+        @media (max-width: 600px) {
+            h1 { font-size: 22px; margin-bottom: 8px; }
+            .game-container {
+                flex-direction: column;
+                align-items: center;
+                padding: 12px;
+            }
+            .side-panel {
+                flex-direction: row;
+                width: 280px;
+                height: auto;
+                margin-left: 0;
+                margin-top: 10px;
+            }
+            .info-box {
+                margin-bottom: 0;
+                flex: 1;
+                margin: 0 3px;
+                padding: 4px;
+            }
+            .info-box h2 { font-size: 11px; }
+            .info-box p { font-size: 16px; }
+            #btnStart { padding: 6px 10px; font-size: 13px; box-shadow: 0 2px 0px #e0929e; }
+            #btnStart:active { transform: translateY(1px); box-shadow: 0 1px 0px #e0929e; }
+            .controls { display: grid; }
+        }
+    </style>
+</head>
+<body>
+
+    <h1>ちいかわ TETRIS</h1>
+
+    <div class="game-container">
+        <!-- 畫布大小 200x400 -->
+        <canvas id="gameCanvas" width="200" height="400"></canvas>
+
+        <div class="side-panel">
+            <div class="info-box">
+                <h2>最高紀錄 👑</h2>
+                <p id="highScore">0</p>
+            </div>
+            <div class="info-box">
+                <h2>目前分數 ✨</h2>
+                <p id="score">0</p>
+            </div>
+            <div class="info-box">
+                <h2>速度等級 🌱</h2>
+                <p id="level">1</p>
+            </div>
+            <button id="btnStart">START 拔草！</button>
+        </div>
+    </div>
+
+    <!-- 手機版虛擬按鍵 -->
+    <div class="controls">
+        <button class="ctrl-btn" id="ctrl-rotate">↻ 旋轉</button>
+        <button class="ctrl-btn" id="ctrl-up">↑ 旋轉</button>
+        <button class="ctrl-btn" id="ctrl-drop">瞬降</button>
+        <button class="ctrl-btn" id="ctrl-left">← 左</button>
+        <button class="ctrl-btn" id="ctrl-down">↓ 加速</button>
+        <button class="ctrl-btn" id="ctrl-right">→ 右</button>
+    </div>
+
+    <div class="footer">Designed by Jack Yang</div>
+
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const scoreElement = document.getElementById('score');
+    const highScoreElement = document.getElementById('highScore');
+    const levelElement = document.getElementById('level');
+    const btnStart = document.getElementById('btnStart');
+
+    const ROW = 20;
+    const COL = 10;
+    const SQ = 20; 
+    const VACANT = "#fffdf9"; // 空白格子改為溫暖的奶油白
+
+    // 吉伊卡娃角色風格的粉嫩配色
+    const COLORS = [
+        null,
+        '#8ed0ff', // I : 小八貓藍
+        '#ffee7d', // O : 烏薩奇黃
+        '#ffb7da', // T : 吉伊卡娃粉
+        '#b2f0b2', // S : 綠色草地
+        '#ff9999', // Z : 紅色
+        '#ffcc99', // J : 橘色
+        '#e1bfe7'  // L : 小桃鼠紫
+    ];
+
+    // 方塊形狀定義（修正 I 型長條方塊無法正常旋轉的問題）
+    // 原本 I 型使用 1x4 陣列，在矩陣旋轉時會產生邊界與長寬不對稱錯誤。
+    // 改用 4x4 正方形矩陣包裹，就能完美支援 90 度自由旋轉。
+    const SHAPES = [
+        [],
+        [
+            [0, 0, 0, 0],
+            [1, 1, 1, 1],
+            [0, 0, 0, 0],
+            [0, 0, 0, 0]
+        ], // I 型
+        [[2,2],[2,2]], // O 型
+        [[0,3,0],[3,3,3],[0,0,0]], // T 型
+        [[0,4,4],[4,4,0],[0,0,0]], // S 型
+        [[5,5,0],[0,5,5],[0,0,0]], // Z 型
+        [[6,0,0],[6,6,6],[0,0,0]], // J 型
+        [[0,0,7],[7,7,7],[0,0,0]]  // L 型
+    ];
+
+    let board = [];
+    let score = 0;
+    let highScore = localStorage.getItem('tetris_highscore') || 0;
+    let level = 1;
+    let speed = 800; 
+    let gameOver = true;
+    let dropStart = Date.now();
+    let timer = null;
+    let currentPiece = null;
+
+    highScoreElement.innerText = highScore;
+
+    function initBoard() {
+        for (let r = 0; r < ROW; r++) {
+            board[r] = [];
+            for (let c = 0; c < COL; c++) {
+                board[r][c] = 0;
+            }
+        }
+    }
+
+    // 畫方塊（加上溫和的圓角感或精緻的內線，使其更有卡通質感）
+    function drawSquare(x, y, colorCode) {
+        ctx.fillStyle = COLORS[colorCode] || VACANT;
+        ctx.fillRect(x * SQ, y * SQ, SQ, SQ);
+        
+        // 格子邊框線條：如果是空白格就淡淡的，有方塊就用白色內襯做出立體感
+        ctx.strokeStyle = colorCode ? "#ffffff" : "#fff1f3";
+        ctx.lineWidth = colorCode ? 2 : 1;
+        ctx.strokeRect(x * SQ, y * SQ, SQ, SQ);
+    }
+
+    function drawBoard() {
+        for (let r = 0; r < ROW; r++) {
+            for (let c = 0; c < COL; c++) {
+                drawSquare(c, r, board[r][c]);
+            }
+        }
+    }
+
+    class Piece {
+        constructor(shape, colorIndex) {
+            this.shape = shape;
+            this.colorIndex = colorIndex;
+            this.x = Math.floor((COL - shape[0].length) / 2);
+            this.y = colorIndex === 1 ? -2 : -1; // I型因4x4包裝，初始高度微調
+        }
+
+        fill(colorCode) {
+            for (let r = 0; r < this.shape.length; r++) {
+                for (let c = 0; c < this.shape[r].length; c++) {
+                    if (this.shape[r][c]) {
+                        if (this.y + r >= 0) {
+                            drawSquare(this.x + c, this.y + r, colorCode);
+                        }
+                    }
+                }
+            }
+        }
+
+        draw() { this.fill(this.colorIndex); }
+        unDraw() { this.fill(0); }
+
+        moveDown() {
+            if (!this.collision(0, 1, this.shape)) {
+                this.unDraw();
+                this.y++;
+                this.draw();
+            } else {
+                this.lock();
+                generateNextPiece();
+            }
+        }
+
+        moveRight() {
+            if (!this.collision(1, 0, this.shape)) {
+                this.unDraw();
+                this.x++;
+                this.draw();
+            }
+        }
+
+        moveLeft() {
+            if (!this.collision(-1, 0, this.shape)) {
+                this.unDraw();
+                this.x--;
+                this.draw();
+            }
+        }
+
+        rotate() {
+            let nextPattern = [];
+            const n = this.shape.length;
+            
+            // 進行矩陣順時針 90 度旋轉
+            for (let r = 0; r < n; r++) {
+                nextPattern[r] = [];
+                for (let c = 0; c < n; c++) {
+                    nextPattern[r][c] = this.shape[n - 1 - c][r];
+                }
+            }
+
+            // 踢牆嘗試 (Wall Kick 簡易版)：如果旋轉後發生碰撞，嘗試左右微調一格，增加操作流暢度
+            let kick = 0;
+            if (this.collision(0, 0, nextPattern)) {
+                if (!this.collision(1, 0, nextPattern)) kick = 1;
+                else if (!this.collision(-1, 0, nextPattern)) kick = -1;
+                else if (!this.collision(2, 0, nextPattern)) kick = 2;
+                else if (!this.collision(-2, 0, nextPattern)) kick = -2;
+                else return; // 真的卡死就不給轉
+            }
+
+            this.unDraw();
+            this.x += kick;
+            this.shape = nextPattern;
+            this.draw();
+        }
+
+        hardDrop() {
+            this.unDraw();
+            while (!this.collision(0, 1, this.shape)) {
+                this.y++;
+            }
+            this.draw();
+            this.lock();
+            generateNextPiece();
+        }
+
+        collision(xOffset, yOffset, futureShape) {
+            for (let r = 0; r < futureShape.length; r++) {
+                for (let c = 0; c < futureShape[r].length; c++) {
+                    if (!futureShape[r][c]) continue;
+
+                    let newX = this.x + c + xOffset;
+                    let newY = this.y + r + yOffset;
+
+                    if (newX < 0 || newX >= COL || newY >= ROW) return true;
+                    if (newY < 0) continue; 
+                    if (board[newY][newX] !== 0) return true;
+                }
+            }
+            return false;
+        }
+
+        lock() {
+            for (let r = 0; r < this.shape.length; r++) {
+                for (let c = 0; c < this.shape[r].length; c++) {
+                    if (!this.shape[r][c]) continue;
+                    if (this.y + r < 0) {
+                        gameOver = true;
+                        alert("哇啊啊——遊戲結束了！ 最終得分：" + score);
+                        checkHighScore();
+                        return;
+                    }
+                    board[this.y + r][this.x + c] = this.colorIndex;
+                }
+            }
+
+            let rowsCleared = 0;
+            for (let r = 0; r < ROW; r++) {
+                let isRowFull = true;
+                for (let c = 0; c < COL; c++) {
+                    if (board[r][c] === 0) {
+                        isRowFull = false;
+                        break;
+                    }
+                }
+                if (isRowFull) {
+                    board.splice(r, 1);
+                    board.unshift(new Array(COL).fill(0));
+                    rowsCleared++;
+                }
+            }
+
+            if (rowsCleared > 0) {
+                const scoreReward = [0, 100, 300, 500, 800];
+                score += scoreReward[rowsCleared] * level;
+                scoreElement.innerText = score;
+
+                let currentLevel = Math.floor(score / 500) + 1;
+                if (currentLevel > level) {
+                    level = currentLevel;
+                    levelElement.innerText = level;
+                    speed = Math.max(100, 800 - (level - 1) * 80); 
+                }
+            }
+            drawBoard();
+        }
+    }
+
+    function generateNextPiece() {
+        if (gameOver) return;
+        const randIndex = Math.floor(Math.random() * 7) + 1;
+        currentPiece = new Piece(SHAPES[randIndex], randIndex);
+    }
+
+    function checkHighScore() {
+        if (score > highScore) {
+            highScore = score;
+            highScoreElement.innerText = highScore;
+            localStorage.setItem('tetris_highscore', highScore);
+            alert("太強了！你創下了新的最高分數紀錄！");
+        }
+    }
+
+    function updateGame() {
+        if (gameOver) return;
+        let now = Date.now();
+        let delta = now - dropStart;
+        if (delta > speed) {
+            currentPiece.moveDown();
+            dropStart = Date.now();
+        }
+        timer = requestAnimationFrame(updateGame);
+    }
+
+    function startGame() {
+        if (!gameOver) {
+            cancelAnimationFrame(timer);
+        }
+        initBoard();
+        drawBoard();
+        score = 0;
+        level = 1;
+        speed = 800;
+        gameOver = false;
+        scoreElement.innerText = score;
+        levelElement.innerText = level;
+        generateNextPiece();
+        dropStart = Date.now();
+        updateGame();
+    }
+
+    btnStart.addEventListener('click', startGame);
+
+    // 實體鍵盤監聽
+    document.addEventListener('keydown', (e) => {
+        if (gameOver) return;
+        if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') currentPiece.moveLeft();
+        else if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') currentPiece.rotate();
+        else if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') currentPiece.moveRight();
+        else if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') currentPiece.moveDown();
+        else if (e.key === ' ') currentPiece.hardDrop(); 
+    });
+
+    // 手機按鍵監聽
+    document.getElementById('ctrl-left').addEventListener('click', () => { if(!gameOver) currentPiece.moveLeft(); });
+    document.getElementById('ctrl-right').addEventListener('click', () => { if(!gameOver) currentPiece.moveRight(); });
+    document.getElementById('ctrl-up').addEventListener('click', () => { if(!gameOver) currentPiece.rotate(); });
+    document.getElementById('ctrl-rotate').addEventListener('click', () => { if(!gameOver) currentPiece.rotate(); });
+    document.getElementById('ctrl-down').addEventListener('click', () => { if(!gameOver) currentPiece.moveDown(); });
+    document.getElementById('ctrl-drop').addEventListener('click', () => { if(!gameOver) currentPiece.hardDrop(); });
+
+    initBoard();
+    drawBoard();
+</script>
+</body>
+</html>
